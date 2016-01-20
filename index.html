@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+  <head>
+    <style>
+
+      body {
+        font: 12px sans-serif;
+        text-align: center;
+      }
+
+      svg {
+        box-shadow: 2px 2px 2px #888888;
+        border: solid 1px #c0c0c0;
+        margin-top: 50px;
+      }
+
+      .legend {
+
+      }
+
+      .axis path,
+      .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+       }
+
+       .y-axis {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+       }
+
+
+
+
+  .d3-tip {
+    line-height: 1;
+    padding: 12px;
+    background: #1F77B4;
+    font-size: 14px;
+    text-align: center;
+    color: white;
+    border-radius: 20px;
+  }
+
+  /* Creates a small triangle extender for the tooltip */
+  .d3-tip:after {
+    box-sizing: border-box;
+    display: inline;
+    font-size: 10px;
+    width: 100%;
+    line-height: 1;
+    color: #1F77B4;
+    content: "\25BC";
+    position: absolute;
+    text-align: center;
+  }
+
+  /* Style northward tooltips differently */
+  .d3-tip.n:after {
+    margin: -1px 0 0 0;
+    top: 100%;
+    left: 0;
+  }
+
+
+
+    </style>
+    <script src="http://d3js.org/d3.v3.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+  </head>
+  <body>
+
+    <div id='heatmap'></div>
+
+
+    <script type="text/javascript">
+
+var color1 = '#00007F', color2 = '#0000FF', color3 = '#007FFF', color4 = '#00FFFF', color5 = '#7FFF7F', color6 = '#FFFF00', color7 = '#FF7F00', color8 = '#FF0000', color9 = '#7F0000';
+
+var margin = {top: 30, right: 100, bottom: 70, left: 50},
+    width = 1275 - margin.left - margin.right,
+    height = 700 - margin.top - margin.bottom;
+
+//height of each row in the heatmap
+//width of each column in the heatmap
+var gridSize = 5,
+    h = 42,
+    w = gridSize,
+    rectPadding = 60;
+
+var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+var x = d3.scale.linear()
+    .range([0, (width)]);
+
+var y = d3.time.scale()
+    .domain([new Date(2012, 0, 1), new Date(2012, 11, 30)])
+    .range([570, 70]);
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .tickFormat(function(d) { return d.toString(); })
+    .ticks(8)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .ticks(d3.time.months)
+    .tickFormat(d3.time.format("%b"))
+    .outerTickSize(0)
+    .orient("left");
+
+
+var colorScale = d3.scale.linear()
+     .domain([0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0])
+     .range([color1, color2, color3, color4, color5, color6, color7, color8, color9]);
+
+var tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-10, 0])
+  .html(function(d) {
+    return "<span>" + months[d.month-1] + "&nbsp;" + d.year + "<br>" + Math.round((8.66 + d.variance)*1000)/1000 + "C</span>";
+  });
+var svg = d3.select("#heatmap").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+svg.call(tip);
+
+var data3 = [];
+var totalVar = 0;
+
+d3.json("https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/global-temperature.json", function(error, json) {
+
+  if (error) throw error;
+
+  for (var i = 660; i < json.monthlyVariance.length; i++) {
+    data3.push({year: +json.monthlyVariance[i].year, month: +json.monthlyVariance[i].month, variance: +json.monthlyVariance[i].variance});
+  }
+
+
+  var values = data3.map(function(elt) { return elt.variance; });
+  var max = Math.max.apply(null, values);
+  var min = Math.min.apply(null, values);
+  var spread = max - min;
+
+
+  x.domain(d3.extent(data3, function(d) { return (d.year); })).nice();
+//  y.domain(d3.extent(data3, function(d) { return (d.month); })).nice();
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + (height) + ")")
+      .call(xAxis)
+    .append("text")
+      .attr("class", "label")
+      .attr("x", width)
+      .attr("y", -6)
+      .style("text-anchor", "end")
+      .text("");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text();
+
+
+
+  svg.selectAll(".heatmap")
+    .data(data3, function(d) { return d.month + ':' + (d.year - 1800); })
+  .enter().append("svg:rect")
+    .attr("x", function(d) { return (d.year - 1800) * w; })
+    .attr("y", function(d) { return (d.month * h + 25); })
+    .attr("width", function(d) { return w; })
+    .attr("height", function(d) { return h; })
+    .style("fill", function(d) { return colorScale((d.variance-min)/spread); })
+    .on('mouseover', tip.show)
+    .on('mouseout', tip.hide);
+
+  var legend = svg.selectAll(".legend")
+      .data(colorScale.ticks(9).slice(0).reverse())
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(" + (width + 20) + "," + (40 + i * 20) + ")"; });
+
+  legend.append("rect")
+      .attr("width", 20)
+      .attr("height", 20)
+      .style("fill", colorScale);
+
+  legend.append("text")
+      .attr("x", 26)
+      .attr("y", 10)
+      .attr("dy", ".35em")
+      .text();
+
+  svg.append("text")
+      .attr("class", "label")
+      .attr("x", width + 10)
+      .attr("y", 30)
+      .attr("dy", ".35em")
+      .text("+/- Avg");
+
+  svg.append("text")
+      .attr("x", (width / 2))             
+      .attr("y", (margin.top/2))
+      .attr("text-anchor", "middle")  
+      .style("font-size", "30px") 
+      .style("font-family", "arial") 
+      .style("text-decoration", "none")  
+      .text("Monthly Global Land Surface Temperatures 1808 - 2015");
+
+  svg.append("text")
+        .attr("x", width/2 )
+      .attr("y", (margin.top/2)+25)
+        .style("text-anchor", "middle")
+        .style("font-size", "14px")
+        .text("Temperature variances versus the Jan 1951 to Dec 1980 average of 8.66C. Max Var = +2.33. Min Var = -4.08. Avg Var = -0.27. ");
+
+
+  svg.append("text")
+      .attr("x", (width / 2))             
+      .attr("y", (height + 50))
+      .attr("text-anchor", "middle")  
+      .style("font-size", "20px") 
+      .style("font-family", "arial") 
+      .style("text-decoration", "none")  
+      .text("Years");
+
+
+
+});
+
+    </script>
+  </body>
+</html>
